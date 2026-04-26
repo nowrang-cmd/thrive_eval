@@ -95,6 +95,46 @@
   .btn-new:hover { background: rgba(201,168,76,0.1); }
   .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== ATHLETE DROPDOWN ===== */
+  .athlete-search-wrap {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .athlete-search-wrap label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  #athleteSelect {
+    width: 100%;
+    background: var(--dark2);
+    border: 2px solid var(--gold);
+    border-radius: 4px;
+    color: var(--white);
+    font-family: 'Barlow', sans-serif;
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  #athleteSelect:focus { border-color: var(--gold-light); }
+  #athleteSelect option { background: #fff; color: #1A1A1A; }
+  .athlete-load-status {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    color: #888;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
 </style>
 </head>
 <body>
@@ -106,6 +146,16 @@
 
 <div class="container">
   <div class="section-label">Player Information</div>
+
+  <!-- Athlete Dropdown -->
+  <div class="athlete-search-wrap">
+    <label>Select Registered Athlete</label>
+    <select id="athleteSelect" onchange="selectAthlete(this.value)">
+      <option value="">-- Loading athletes... --</option>
+    </select>
+    <div class="athlete-load-status" id="athleteLoadStatus">Loading athletes...</div>
+  </div>
+
   <div class="info-grid">
     <div class="field-group">
       <label>First Name</label>
@@ -493,9 +543,82 @@ function resetForm() {
   updateOverall();
 }
 
+
+// ===== ATHLETE DROPDOWN =====
+let allAthletes = [];
+
+function loadAthletes() {
+  const script = document.createElement("script");
+  script.src = APPS_SCRIPT_URL + "?action=getAthletes&callback=onAthletesLoaded";
+  script.onerror = () => {
+    document.getElementById("athleteLoadStatus").textContent = "Could not load athletes.";
+    document.getElementById("athleteSelect").innerHTML = '<option value="">-- No athletes found --</option>';
+  };
+  document.body.appendChild(script);
+  setTimeout(() => script.remove(), 5000);
+}
+
+function onAthletesLoaded(data) {
+  allAthletes = Array.isArray(data) ? data : [];
+  const sel = document.getElementById("athleteSelect");
+  const status = document.getElementById("athleteLoadStatus");
+
+  if (!allAthletes.length) {
+    sel.innerHTML = '<option value="">-- No registered athletes --</option>';
+    status.textContent = "No athletes found. Register athletes via thrivebasketball.org.";
+    return;
+  }
+
+  // Sort alphabetically by last name
+  allAthletes.sort((a, b) => {
+    const la = (a["Athlete Last Name"] || "").toLowerCase();
+    const lb = (b["Athlete Last Name"] || "").toLowerCase();
+    return la.localeCompare(lb);
+  });
+
+  sel.innerHTML = '<option value="">-- Select Athlete --</option>' +
+    allAthletes.map((a, i) => {
+      const first = a["Athlete First Name"] || "";
+      const last  = a["Athlete Last Name"]  || "";
+      const grade = a["Grade Level"]        || "";
+      return `<option value="${i}">${last}, ${first}${grade ? ' · ' + grade : ''}</option>`;
+    }).join("");
+
+  status.textContent = allAthletes.length + " athletes loaded";
+  setTimeout(() => status.textContent = "", 3000);
+}
+
+function selectAthlete(idx) {
+  if (idx === "") {
+    document.getElementById("playerFirst").value = "";
+    document.getElementById("playerLast").value  = "";
+    document.getElementById("session").selectedIndex = 0;
+    return;
+  }
+
+  const a = allAthletes[parseInt(idx)];
+  if (!a) return;
+
+  // Auto-fill name fields
+  document.getElementById("playerFirst").value = a["Athlete First Name"] || "";
+  document.getElementById("playerLast").value  = a["Athlete Last Name"]  || "";
+
+  // Auto-select grade
+  const gradeSelect = document.getElementById("session");
+  const grade = (a["Grade Level"] || "").trim();
+  for (let i = 0; i < gradeSelect.options.length; i++) {
+    if (gradeSelect.options[i].value.includes(grade)) {
+      gradeSelect.selectedIndex = i;
+      break;
+    }
+  }
+}
+
+
 buildCards();
 setDefaultDate();
 updateOverall();
+loadAthletes();
 </script>
 </body>
 </html>
