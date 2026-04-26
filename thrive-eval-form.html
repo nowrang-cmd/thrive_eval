@@ -664,18 +664,18 @@
     <div class="pin-dot" id="d3"></div>
   </div>
   <div class="pin-pad">
-    <button class="pin-btn" onclick="pinPress('1')">1</button>
-    <button class="pin-btn" onclick="pinPress('2')">2</button>
-    <button class="pin-btn" onclick="pinPress('3')">3</button>
-    <button class="pin-btn" onclick="pinPress('4')">4</button>
-    <button class="pin-btn" onclick="pinPress('5')">5</button>
-    <button class="pin-btn" onclick="pinPress('6')">6</button>
-    <button class="pin-btn" onclick="pinPress('7')">7</button>
-    <button class="pin-btn" onclick="pinPress('8')">8</button>
-    <button class="pin-btn" onclick="pinPress('9')">9</button>
-    <button class="pin-btn" onclick="pinClear()">⌫</button>
-    <button class="pin-btn" onclick="pinPress('0')">0</button>
-    <button class="pin-btn" onclick="pinPress('')">·</button>
+    <button class="pin-btn" onclick="pinPress(1)">1</button>
+    <button class="pin-btn" onclick="pinPress(2)">2</button>
+    <button class="pin-btn" onclick="pinPress(3)">3</button>
+    <button class="pin-btn" onclick="pinPress(4)">4</button>
+    <button class="pin-btn" onclick="pinPress(5)">5</button>
+    <button class="pin-btn" onclick="pinPress(6)">6</button>
+    <button class="pin-btn" onclick="pinPress(7)">7</button>
+    <button class="pin-btn" onclick="pinPress(8)">8</button>
+    <button class="pin-btn" onclick="pinPress(9)">9</button>
+    <button class="pin-btn" onclick="pinClear()">&#9003;</button>
+    <button class="pin-btn" onclick="pinPress(0)">0</button>
+    <button class="pin-btn" style="visibility:hidden"></button>
   </div>
   <div class="pin-error" id="pinError"></div>
 </div>
@@ -827,6 +827,41 @@
 </div>
 
 <script>
+
+// ===== PIN =====
+const EVAL_PIN = "0224";
+let pinEntry = "";
+
+function pinPress(val) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += String(val);
+  updatePinDots();
+  if (pinEntry.length === 4) setTimeout(checkEvalPin, 200);
+}
+
+function pinClear() {
+  pinEntry = pinEntry.slice(0, -1);
+  updatePinDots();
+  document.getElementById("pinError").textContent = "";
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById("d" + i).classList.toggle("filled", i < pinEntry.length);
+  }
+}
+
+function checkEvalPin() {
+  if (pinEntry === EVAL_PIN) {
+    document.getElementById("pinScreen").style.display = "none";
+    document.getElementById("evalApp").style.display = "block";
+  } else {
+    document.getElementById("pinError").textContent = "Incorrect PIN — try again";
+    pinEntry = "";
+    updatePinDots();
+  }
+}
+
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwe0YXToBFyHrgByVu6IqMyGbioZcbZjWpVwXf40pwGAWt7zl6TroiMNNPRQBjSjSre/exec";
 
 const BADGE_IMAGES = {
