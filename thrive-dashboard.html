@@ -1291,11 +1291,11 @@ function drawRadar(canvasId, data) {
     ctx.stroke();
   });
 
-  ctx.font = "bold 13px 'Barlow Condensed'";
+  ctx.font = "bold 14px 'Barlow Condensed'";
   data.forEach((d, i) => {
     const angle = step * i - Math.PI / 2;
-    const lR = R + 24;
-    ctx.fillStyle = "#ffffff";
+    const lR = R + 26;
+    ctx.fillStyle = "#1A1A1A";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(d.label, cx + lR * Math.cos(angle), cy + lR * Math.sin(angle));
