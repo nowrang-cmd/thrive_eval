@@ -868,13 +868,18 @@ async function handleSubmit() {
   btn.disabled = true;
   btn.innerHTML = '<span class="loading-spinner"></span>Submitting...';
 
-  try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: "POST", mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-  } catch(e) {}
+  // Use a script tag injection to bypass CORS — most reliable for Apps Script
+  const params = new URLSearchParams(payload).toString();
+  const url = APPS_SCRIPT_URL + "?" + params;
+
+  const script = document.createElement("script");
+  script.src = url;
+  script.onload = () => script.remove();
+  script.onerror = () => script.remove();
+  document.body.appendChild(script);
+
+  // Small delay to allow request to fire
+  await new Promise(r => setTimeout(r, 800));
 
   btn.innerHTML = "Submit Evaluation";
   btn.disabled = false;
