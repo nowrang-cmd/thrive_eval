@@ -555,7 +555,7 @@
   .modal-overlay.show { opacity: 1; pointer-events: all; }
 
   .modal {
-    background: #141414;
+    background: #ffffff;
     border: 1px solid var(--gold-dim);
     border-radius: 12px;
     max-width: 680px;
@@ -580,13 +580,14 @@
     font-family: 'Bebas Neue', sans-serif;
     font-size: 32px;
     letter-spacing: 2px;
-    color: var(--white);
+    color: #1A1A1A;
   }
 
   .modal-meta {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 12px;
-    color: var(--grey);
+    font-size: 14px;
+    font-weight: 700;
+    color: #1A1A1A;
     letter-spacing: 1px;
     margin-top: 2px;
   }
@@ -617,10 +618,10 @@
   }
 
   .modal-score-box {
-    background: var(--dark2);
-    border: 1px solid var(--border);
+    background: #0A0A0A;
+    border: 1px solid #333;
     border-radius: 8px;
-    padding: 16px;
+    padding: 20px 16px 12px;
     text-align: center;
   }
 
@@ -628,20 +629,23 @@
 
   .modal-score-box .mslabel {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 11px;
+    font-size: 14px;
+    font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: var(--grey);
+    color: #ffffff;
+    margin-bottom: 6px;
+    display: block;
   }
 
   .modal-score-box .msval {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 40px;
+    font-size: 48px;
     color: var(--gold);
     line-height: 1;
   }
 
-  .modal-score-box.raw .msval { color: var(--grey); font-size: 32px; }
+  .modal-score-box.raw .msval { color: #ffffff; font-size: 32px; }
 
   .modal-radar {
     display: flex;
@@ -657,24 +661,25 @@
   }
 
   .modal-pill {
-    background: var(--dark2);
-    border: 1px solid var(--border);
+    background: #0A0A0A;
+    border: 1px solid #333;
     border-radius: 6px;
-    padding: 10px 8px;
+    padding: 12px 8px;
     text-align: center;
   }
 
   .modal-pill .mpname {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 10px;
+    font-size: 13px;
+    font-weight: 700;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: var(--grey);
+    color: #ffffff;
   }
 
   .modal-pill .mpval {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 26px;
+    font-size: 32px;
     color: var(--gold);
     line-height: 1.1;
   }
@@ -686,7 +691,7 @@
     letter-spacing: 2px;
     color: var(--gold);
     margin-bottom: 12px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #E0E0E0;
     padding-top: 20px;
   }
 
@@ -695,7 +700,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #E0E0E0;
   }
 
   .history-row:last-child { border-bottom: none; }
@@ -703,15 +708,17 @@
   .history-date {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 13px;
-    color: var(--grey);
+    font-weight: 600;
+    color: #444444;
     letter-spacing: 1px;
     min-width: 100px;
   }
 
   .history-coach {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 13px;
-    color: var(--grey2);
+    font-size: 15px;
+    font-weight: 700;
+    color: #1A1A1A;
     flex: 1;
     padding: 0 12px;
   }
@@ -1284,11 +1291,11 @@ function drawRadar(canvasId, data) {
     ctx.stroke();
   });
 
-  ctx.font = "bold 10px 'Barlow Condensed'";
+  ctx.font = "bold 13px 'Barlow Condensed'";
   data.forEach((d, i) => {
     const angle = step * i - Math.PI / 2;
-    const lR = R + 20;
-    ctx.fillStyle = "#8B6E2E";
+    const lR = R + 24;
+    ctx.fillStyle = "#ffffff";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(d.label, cx + lR * Math.cos(angle), cy + lR * Math.sin(angle));
