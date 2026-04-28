@@ -677,6 +677,27 @@ function loadEvalsCache() {
 
 function onEvalsCacheLoaded(data) {
   window._allEvalsCache = Array.isArray(data) ? data : [];
+  // If an athlete was already selected, try setting position now
+  if (window._lastSelectedAthlete) {
+    const a = window._lastSelectedAthlete;
+    const lastName  = (a["Athlete Last Name"]  || "").toLowerCase();
+    const firstName = (a["Athlete First Name"] || "").toLowerCase();
+    const matches = window._allEvalsCache.filter(ev =>
+      (ev["Last Name"]  || "").toLowerCase() === lastName &&
+      (ev["First Name"] || "").toLowerCase() === firstName
+    );
+    const lastEval = matches.pop();
+    if (lastEval && lastEval["Position"]) {
+      const posSelect = document.getElementById("position");
+      for (let i = 0; i < posSelect.options.length; i++) {
+        if (posSelect.options[i].value === lastEval["Position"]) {
+          posSelect.selectedIndex = i;
+          updateOverall();
+          break;
+        }
+      }
+    }
+  }
 }
 
 function loadAthletes() {
@@ -732,6 +753,9 @@ function selectAthlete(idx) {
 
   const a = allAthletes[parseInt(idx)];
   if (!a) return;
+
+  // Store selected athlete for position retry after cache loads
+  window._lastSelectedAthlete = a;
 
   // Auto-set to Re-Evaluation
   setEvalType("Re-Evaluation");
