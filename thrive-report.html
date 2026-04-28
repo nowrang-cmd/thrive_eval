@@ -567,15 +567,18 @@ function onAthletesForLogin(athletes) {
   const birthYear= window._loginBirthYear;
   const matches  = window._evalMatches;
 
-  // Find athlete with matching last name and birth year
+  // Find athlete - flexible birthday matching
+  // Handles: 2013, January 1 2013, 01/01/2013, or empty
   const athlete = (athletes || []).find(a => {
     const aLast = (a["Athlete Last Name"] || "").trim().toLowerCase();
-    const bday  = (a["Birthday"] || "").toString();
-    return aLast === lastName && bday.includes(birthYear);
+    const bday  = (a["Birthday"] || "").toString().trim();
+    if (aLast !== lastName) return false;
+    if (!bday) return true; // no birthday set - allow access
+    return bday.includes(birthYear); // works for any format containing the year
   });
 
   if (!athlete) {
-    errEl.textContent = "Birth year doesn\'t match. Please try again.";
+    errEl.textContent = "Details not found. Check your last name and birth year.";
     return;
   }
 
