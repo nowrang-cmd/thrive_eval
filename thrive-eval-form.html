@@ -750,27 +750,30 @@ function selectAthlete(idx) {
     }
   }
 
-  // Debug - log what athlete fields we have
-  console.log("Athlete data:", JSON.stringify(a));
-
-  // Auto-select Birth Year
+  // Auto-select Birth Year - extract 4-digit year from any date format
   const bday = (a["Birthday"] || "").toString().trim();
-  console.log("Birthday field:", bday);
   if (bday) {
     const yearSelect = document.getElementById("birthYear");
-    for (let i = 0; i < yearSelect.options.length; i++) {
-      if (bday.includes(yearSelect.options[i].value)) {
-        yearSelect.selectedIndex = i;
-        break;
+    // Extract 4-digit year from birthday string
+    const yearMatch = bday.match(/\d{4}/);
+    if (yearMatch) {
+      const year = yearMatch[0];
+      for (let i = 0; i < yearSelect.options.length; i++) {
+        if (yearSelect.options[i].value === year) {
+          yearSelect.selectedIndex = i;
+          break;
+        }
       }
     }
   }
 
-  // Auto-select Position from last evaluation if available
-  console.log("Evals cache:", window._allEvalsCache ? window._allEvalsCache.length : "not loaded");
+  // Auto-select Position from last evaluation
+  // Try immediately, and also after cache loads if not ready yet
   const lastName  = (a["Athlete Last Name"]  || "").toLowerCase();
   const firstName = (a["Athlete First Name"] || "").toLowerCase();
-  if (window._allEvalsCache) {
+
+  function trySetPosition() {
+    if (!window._allEvalsCache || !window._allEvalsCache.length) return false;
     const lastEval = window._allEvalsCache
       .filter(ev => (ev["Last Name"]  || "").toLowerCase() === lastName &&
                     (ev["First Name"] || "").toLowerCase() === firstName)
@@ -781,10 +784,16 @@ function selectAthlete(idx) {
         if (posSelect.options[i].value === lastEval["Position"]) {
           posSelect.selectedIndex = i;
           updateOverall();
-          break;
+          return true;
         }
       }
     }
+    return false;
+  }
+
+  // Try now, retry after 2s if cache not loaded yet
+  if (!trySetPosition()) {
+    setTimeout(trySetPosition, 2000);
   }
 }
 
