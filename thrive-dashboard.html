@@ -655,6 +655,72 @@
     margin-bottom: 24px;
   }
 
+  .radar-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .radar-comparison-box {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .radar-comparison-box.self { border-color: #4A90D9; }
+  .radar-comparison-box.coach { border-color: var(--gold-dim); }
+
+  .radar-comparison-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .radar-comparison-label.self  { color: #4A90D9; }
+  .radar-comparison-label.coach { color: var(--gold); }
+
+  .score-diff-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .score-diff-box {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 4px;
+    text-align: center;
+  }
+
+  .score-diff-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #888;
+  }
+
+  .score-diff-vals {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+  }
+
+  .score-diff-self  { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: #4A90D9; }
+  .score-diff-coach { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--gold); }
+  .score-diff-sep   { font-size: 10px; color: #555; }
+
   .modal-pills {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -984,6 +1050,19 @@
       <canvas id="modalRadar" width="280" height="280"></canvas>
     </div>
 
+    <div class="radar-comparison" id="radarCompare" style="display:none;">
+      <div class="radar-comparison-box self">
+        <div class="radar-comparison-label self">Self-Evaluation</div>
+        <canvas id="radarSelf" width="200" height="200"></canvas>
+      </div>
+      <div class="radar-comparison-box coach">
+        <div class="radar-comparison-label coach">Coach Evaluation</div>
+        <canvas id="radarCoach" width="200" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="score-diff-row" id="scoreDiff" style="display:none;"></div>
+
     <div class="modal-pills" id="modalPills"></div>
 
     <div class="history-title">Evaluation History</div>
@@ -992,13 +1071,17 @@
 </div>
 
 <script>
-// Format date - just show YYYY-MM-DD, strip anything after T
+// Format date - strip time portion, handle any format
 function formatDate(d) {
   if (!d) return "";
-  return String(d).split("T")[0];
+  const s = String(d).trim();
+  // If it has a T (ISO format) just take the date part
+  if (s.includes("T")) return s.split("T")[0];
+  // If it's already a clean date return it
+  return s;
 }
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPIGf-r3HJFSnaycKK3Vnw_wShuwARVzTfIb3I89PukDf14munntkTMWD-B5-d2aY9/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7MhAjjq_eNuI_e30Mm0xYd6xJb0OlwPmorNN9LhAWSyw8pzU4xVkJKok0je3WgTNZ/exec";
 const PIN = "0224";
 
 const categories = [
@@ -1230,13 +1313,31 @@ function openModal(idx) {
       <div style="display:flex;justify-content:center;margin:10px 0;">
         <canvas id="histRadar${i}" width="220" height="220"></canvas>
       </div>
-      <div class="modal-pills" style="margin-bottom:8px;">
+      <div class="modal-pills" style="margin-bottom:12px;">
         ${categories.map(cat => `
           <div class="modal-pill">
             <div class="mpname">${cat.id}</div>
             <div class="mpval">${ev[cat.id] || "–"}</div>
           </div>`).join("")}
       </div>
+      ${ev["Strengths"] || ev["Challenges"] || ev["Next Steps"] ? `
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${ev["Strengths"] ? `
+        <div style="background:#fff;border-left:4px solid #C9A84C;border-radius:4px;padding:10px 14px;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:3px;">Strengths</div>
+          <div style="font-size:13px;color:#1A1A1A;line-height:1.5;">${ev["Strengths"]}</div>
+        </div>` : ""}
+        ${ev["Challenges"] ? `
+        <div style="background:#fff;border-left:4px solid #E74C3C;border-radius:4px;padding:10px 14px;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:3px;">Challenges</div>
+          <div style="font-size:13px;color:#1A1A1A;line-height:1.5;">${ev["Challenges"]}</div>
+        </div>` : ""}
+        ${ev["Next Steps"] ? `
+        <div style="background:#fff;border-left:4px solid #27AE60;border-radius:4px;padding:10px 14px;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:3px;">Next Steps</div>
+          <div style="font-size:13px;color:#1A1A1A;line-height:1.5;">${ev["Next Steps"]}</div>
+        </div>` : ""}
+      </div>` : ""}
     </div>
   `).join("");
 
