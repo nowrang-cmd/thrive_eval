@@ -697,12 +697,21 @@
     padding-top: 20px;
   }
 
+  .history-eval-card {
+    background: #F9F9F9;
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+
   .history-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
+    padding: 0 0 8px 0;
     border-bottom: 1px solid #E0E0E0;
+    margin-bottom: 8px;
   }
 
   .history-row:last-child { border-bottom: none; }
@@ -1201,18 +1210,40 @@ function openModal(idx) {
       <div class="mpval">${r[cat.id] || "–"}</div>
     </div>`).join("");
 
-  // History
+  // History - show each eval with its own radar
   const histEl = document.getElementById("modalHistory");
-  histEl.innerHTML = p.allEvals.map(ev => `
-    <div class="history-row">
-      <div class="history-date">${ev["Eval Date"] || "–"}</div>
-      <div class="history-coach">${ev["Coach Name"] || "–"}</div>
-      <div class="history-score">${parseFloat(ev["Weighted Score"]).toFixed(1)}</div>
+  histEl.innerHTML = p.allEvals.map((ev, i) => `
+    <div class="history-eval-card">
+      <div class="history-row">
+        <div>
+          <div class="history-date">Eval ${i + 1} — ${ev["Eval Date"] || "–"}</div>
+          <div class="history-coach">${ev["Coach Name"] || "–"} · ${ev["Eval Type"] || ""}</div>
+        </div>
+        <div class="history-score">${parseFloat(ev["Weighted Score"]).toFixed(1)}</div>
+      </div>
+      <div style="display:flex;justify-content:center;margin:10px 0;">
+        <canvas id="histRadar${i}" width="220" height="220"></canvas>
+      </div>
+      <div class="modal-pills" style="margin-bottom:8px;">
+        ${categories.map(cat => `
+          <div class="modal-pill">
+            <div class="mpname">${cat.id}</div>
+            <div class="mpval">${ev[cat.id] || "–"}</div>
+          </div>`).join("")}
+      </div>
     </div>
-    ${ev["Notes"] ? `<div class="notes-box">${ev["Notes"]}</div>` : ""}
   `).join("");
 
-  // Radar
+  // Draw radar for each eval
+  p.allEvals.forEach((ev, i) => {
+    const rd = categories.map(cat => ({
+      label: cat.short,
+      value: parseFloat(ev[cat.id]) || 0
+    }));
+    setTimeout(() => drawRadar("histRadar" + i, rd), 150 + i * 50);
+  });
+
+  // Latest radar at top
   const radarData = categories.map(cat => ({
     label: cat.short,
     value: parseFloat(r[cat.id]) || 0
