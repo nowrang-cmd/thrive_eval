@@ -774,11 +774,13 @@ function selectAthlete(idx) {
 
   function trySetPosition() {
     if (!window._allEvalsCache || !window._allEvalsCache.length) return false;
-    const lastEval = window._allEvalsCache
+    const matches = window._allEvalsCache
       .filter(ev => (ev["Last Name"]  || "").toLowerCase() === lastName &&
-                    (ev["First Name"] || "").toLowerCase() === firstName)
-      .pop();
-    if (lastEval && lastEval["Position"]) {
+                    (ev["First Name"] || "").toLowerCase() === firstName);
+    console.log("Position lookup - matches found:", matches.length, "for", firstName, lastName);
+    const lastEval = matches.pop();
+    if (lastEval) {
+      console.log("Last eval Position:", lastEval["Position"]);
       const posSelect = document.getElementById("position");
       for (let i = 0; i < posSelect.options.length; i++) {
         if (posSelect.options[i].value === lastEval["Position"]) {
