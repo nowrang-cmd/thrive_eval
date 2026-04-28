@@ -750,8 +750,12 @@ function selectAthlete(idx) {
     }
   }
 
+  // Debug - log what athlete fields we have
+  console.log("Athlete data:", JSON.stringify(a));
+
   // Auto-select Birth Year
   const bday = (a["Birthday"] || "").toString().trim();
+  console.log("Birthday field:", bday);
   if (bday) {
     const yearSelect = document.getElementById("birthYear");
     for (let i = 0; i < yearSelect.options.length; i++) {
@@ -763,6 +767,7 @@ function selectAthlete(idx) {
   }
 
   // Auto-select Position from last evaluation if available
+  console.log("Evals cache:", window._allEvalsCache ? window._allEvalsCache.length : "not loaded");
   const lastName  = (a["Athlete Last Name"]  || "").toLowerCase();
   const firstName = (a["Athlete First Name"] || "").toLowerCase();
   if (window._allEvalsCache) {
