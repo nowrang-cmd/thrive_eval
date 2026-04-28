@@ -543,26 +543,35 @@ function onEvalsForLogin(data) {
 
   if (!Array.isArray(data)) { errEl.textContent = "Could not load data. Try again."; return; }
 
-  // Find evals matching last name AND birth year
-  // Evaluations sheet has Birthday column (column D) with year values
-  const matches = data.filter(row => {
+  // Step 1: Find ALL evals matching last name
+  const allByName = data.filter(row => {
     const rowLast = (row["Last Name"] || "").toString().trim().toLowerCase();
-    const rowBday = (row["Birthday"] || "").toString().trim();
-    console.log("Row:", rowLast, "|", rowBday);
-    if (rowLast !== lastName) return false;
-    return rowBday.toString().includes(birthYear);
+    return rowLast === lastName;
   });
 
-  console.log("Matches found:", matches.length);
+  console.log("Evals by last name:", allByName.length);
 
-  if (!matches.length) {
-    errEl.textContent = "Details not found. Check your last name and birth year.";
+  if (!allByName.length) {
+    errEl.textContent = "No evaluations found. Check your last name.";
     return;
   }
 
-  // Verified - show report
-  allEvals = matches.sort((a,b) => new Date(a["Eval Date"]) - new Date(b["Eval Date"]));
-  currentPlayer = matches[0]["Player Name"] || ((matches[0]["First Name"] || "") + " " + (matches[0]["Last Name"] || "")).trim();
+  // Step 2: Verify identity - at least ONE eval must have matching birth year
+  // (empty birthday rows are also accepted for existing manual entries)
+  const verified = allByName.some(row => {
+    const rowBday = (row["Birthday"] || "").toString().trim();
+    if (!rowBday) return false;
+    return rowBday.toString().includes(birthYear);
+  });
+
+  if (!verified) {
+    errEl.textContent = "Birth year doesn't match. Please try again.";
+    return;
+  }
+
+  // Verified - show ALL evals for this player (including ones without birthday)
+  allEvals = allByName.sort((a,b) => new Date(a["Eval Date"]) - new Date(b["Eval Date"]));
+  currentPlayer = allByName[0]["Player Name"] || ((allByName[0]["First Name"] || "") + " " + (allByName[0]["Last Name"] || "")).trim();
   showReport();
 }
 
