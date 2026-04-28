@@ -667,6 +667,18 @@ function setEvalType(type) {
 // ===== ATHLETE DROPDOWN =====
 let allAthletes = [];
 
+function loadEvalsCache() {
+  const s = document.createElement("script");
+  s.src = APPS_SCRIPT_URL + "?action=getAll&callback=onEvalsCacheLoaded";
+  s.onerror = () => {};
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 8000);
+}
+
+function onEvalsCacheLoaded(data) {
+  window._allEvalsCache = Array.isArray(data) ? data : [];
+}
+
 function loadAthletes() {
   const script = document.createElement("script");
   script.src = APPS_SCRIPT_URL + "?action=getAthletes&callback=onAthletesLoaded";
@@ -713,20 +725,22 @@ function selectAthlete(idx) {
     document.getElementById("playerFirst").value = "";
     document.getElementById("playerLast").value  = "";
     document.getElementById("session").selectedIndex = 0;
+    document.getElementById("position").selectedIndex = 0;
+    document.getElementById("birthYear").selectedIndex = 0;
     return;
   }
 
   const a = allAthletes[parseInt(idx)];
   if (!a) return;
 
-  // Auto-set to Re-Evaluation when selecting existing athlete
+  // Auto-set to Re-Evaluation
   setEvalType("Re-Evaluation");
 
-  // Auto-fill name fields
+  // Auto-fill First & Last Name
   document.getElementById("playerFirst").value = a["Athlete First Name"] || "";
   document.getElementById("playerLast").value  = a["Athlete Last Name"]  || "";
 
-  // Auto-select grade
+  // Auto-select Grade Level
   const gradeSelect = document.getElementById("session");
   const grade = (a["Grade Level"] || "").trim();
   for (let i = 0; i < gradeSelect.options.length; i++) {
@@ -736,7 +750,7 @@ function selectAthlete(idx) {
     }
   }
 
-  // Auto-select birth year
+  // Auto-select Birth Year
   const bday = (a["Birthday"] || "").toString().trim();
   if (bday) {
     const yearSelect = document.getElementById("birthYear");
@@ -747,6 +761,26 @@ function selectAthlete(idx) {
       }
     }
   }
+
+  // Auto-select Position from last evaluation if available
+  const lastName  = (a["Athlete Last Name"]  || "").toLowerCase();
+  const firstName = (a["Athlete First Name"] || "").toLowerCase();
+  if (window._allEvalsCache) {
+    const lastEval = window._allEvalsCache
+      .filter(ev => (ev["Last Name"]  || "").toLowerCase() === lastName &&
+                    (ev["First Name"] || "").toLowerCase() === firstName)
+      .pop();
+    if (lastEval && lastEval["Position"]) {
+      const posSelect = document.getElementById("position");
+      for (let i = 0; i < posSelect.options.length; i++) {
+        if (posSelect.options[i].value === lastEval["Position"]) {
+          posSelect.selectedIndex = i;
+          updateOverall();
+          break;
+        }
+      }
+    }
+  }
 }
 
 
@@ -754,6 +788,7 @@ buildCards();
 setDefaultDate();
 updateOverall();
 loadAthletes();
+loadEvalsCache();
 </script>
 </body>
 </html>
