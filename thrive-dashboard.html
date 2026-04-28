@@ -992,21 +992,10 @@
 </div>
 
 <script>
-// Format date in CST (Winnipeg, UTC-6)
+// Format date - just show YYYY-MM-DD, strip anything after T
 function formatDate(d) {
   if (!d) return "";
-  try {
-    const date = new Date(d);
-    if (isNaN(date)) return String(d).split("T")[0];
-    return date.toLocaleDateString("en-CA", {
-      timeZone: "America/Winnipeg",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    });
-  } catch(e) {
-    return String(d).split("T")[0];
-  }
+  return String(d).split("T")[0];
 }
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPIGf-r3HJFSnaycKK3Vnw_wShuwARVzTfIb3I89PukDf14munntkTMWD-B5-d2aY9/exec";
