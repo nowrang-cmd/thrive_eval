@@ -477,7 +477,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPIGf-r3HJFSnaycKK3Vnw_wShuwARVzTfIb3I89PukDf14munntkTMWD-B5-d2aY9/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7MhAjjq_eNuI_e30Mm0xYd6xJb0OlwPmorNN9LhAWSyw8pzU4xVkJKok0je3WgTNZ/exec";
 
 const categories = [
   { id: "shooting",     name: "Shooting",      icon: "🏀", desc: "Shot mechanics, range, efficiency" },
@@ -556,18 +556,27 @@ async function handleSubmit() {
   const playerName = (playerFirst + " " + playerLast).trim();
 
   const payload = {
-    playerFirst, playerLast, playerName,
-    coachName: "Self-Evaluation",
-    evalDate: new Date().toISOString().split("T")[0],
-    session, position,
-    evalType: "Self-Evaluation",
-    rawAverage: overall,
-    weightedScore: overall,
-    placement: "",
-    noteStrengths: "",
+    playerFirst,
+    playerLast,
+    playerName,
+    coachName:      "Self-Evaluation",
+    evalDate:       new Date().toISOString().split("T")[0],
+    session,
+    position,
+    birthYear:      "",
+    evalType:       "Self-Evaluation",
+    shooting:       scores.shooting,
+    ballHandling:   scores.ballHandling,
+    defense:        scores.defense,
+    athleticism:    scores.athleticism,
+    basketballIQ:   scores.basketballIQ,
+    rebounding:     scores.rebounding,
+    weightedScore:  overall,
+    rawAverage:     overall,
+    placement:      "",
+    noteStrengths:  "",
     noteChallenges: "",
-    noteNextSteps: "",
-    ...scores
+    noteNextSteps:  ""
   };
 
   btn.disabled = true;
