@@ -764,11 +764,14 @@ function selectAthlete(idx) {
   document.getElementById("playerFirst").value = a["Athlete First Name"] || "";
   document.getElementById("playerLast").value  = a["Athlete Last Name"]  || "";
 
-  // Auto-select Grade Level
+  // Auto-select Grade Level - flexible matching
   const gradeSelect = document.getElementById("session");
   const grade = (a["Grade Level"] || "").trim();
+  // Extract just grade number e.g. "Grade 8" from "Grade 8 (Age 12-14)"
+  const gradeNum = grade.match(/Grade \d+|College/i);
+  const gradeKey = gradeNum ? gradeNum[0] : grade;
   for (let i = 0; i < gradeSelect.options.length; i++) {
-    if (gradeSelect.options[i].value.includes(grade)) {
+    if (gradeSelect.options[i].value.includes(gradeKey)) {
       gradeSelect.selectedIndex = i;
       break;
     }
