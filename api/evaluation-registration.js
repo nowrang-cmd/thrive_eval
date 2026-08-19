@@ -54,6 +54,14 @@ function paymentUrlFor(submissionId) {
   return url.toString()
 }
 
+function validPastDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return false
+  if (date.toISOString().slice(0, 10) !== value) return false
+  return date.getTime() <= Date.now()
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -89,10 +97,11 @@ export default async function handler(req, res) {
   if (data.consent !== true) {
     return res.status(400).json({ error: 'Please confirm the registration consent.' })
   }
+  if (!validPastDate(dateOfBirth)) {
+    return res.status(400).json({ error: 'Enter a valid date of birth that is not in the future.' })
+  }
 
-  const birthYear = /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) ? dateOfBirth.slice(0, 4) : ''
-  if (!birthYear) return res.status(400).json({ error: 'Enter a valid date of birth.' })
-
+  const birthYear = dateOfBirth.slice(0, 4)
   const online = paymentChoice === 'online'
   const now = new Date().toISOString()
   const submissionId = randomUUID()
