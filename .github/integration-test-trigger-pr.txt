@@ -1,1 +1,2 @@
 trigger live browser integration test
+rerun after installer fix
