@@ -1,0 +1,93 @@
+name: THRiVE Evaluation Live Integration Test
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  live-test:
+    if: contains(github.event.head_commit.message, '[integration-test]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install app dependencies
+        run: npm ci
+      - name: Install Playwright for live browser test
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test live registration flows without charging a card
+        env:
+          TEST_BASE_URL: https://thrive-eval.vercel.app
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright'
+
+          const baseUrl = process.env.TEST_BASE_URL
+          const runId = process.env.GITHUB_RUN_ID
+          const results = []
+          const browser = await chromium.launch({ headless: true })
+          const page = await browser.newPage()
+
+          async function fillCommon({ suffix, dob, expectedGrade }) {
+            await page.goto(baseUrl, { waitUntil: 'networkidle' })
+            await page.locator('input[name="athleteFirstName"]').fill('Integration')
+            await page.locator('input[name="athleteLastName"]').fill(`Test ${suffix}`)
+            await page.locator('input[name="dateOfBirth"]').fill(dob)
+            const grade = await page.locator('select[name="grade"]').inputValue()
+            if (grade !== expectedGrade) {
+              throw new Error(`DOB grade suggestion failed: expected ${expectedGrade}, received ${grade || '(blank)'}`)
+            }
+            await page.locator('input[name="parentFirstName"]').fill('THRiVE')
+            await page.locator('input[name="parentLastName"]').fill('Integration Test')
+            await page.locator('input[name="parentEmail"]').fill(`thrive.integration.${suffix.toLowerCase()}.${runId}@example.com`)
+            await page.locator('input[name="parentPhone"]').fill('2045550199')
+            await page.locator('input[name="position"]').fill('Guard')
+            await page.locator('input[name="school"]').fill('Integration Test School')
+            await page.locator('textarea[name="improvementGoals"]').fill('Automated integration test only.')
+            await page.locator('input[name="consent"]').check()
+            return grade
+          }
+
+          try {
+            const cashGrade = await fillCommon({ suffix: 'Cash', dob: '2014-03-15', expectedGrade: 'Grade 7' })
+            await page.getByRole('button', { name: /Pay at Evaluation/i }).click()
+            const cashResponsePromise = page.waitForResponse((response) =>
+              response.url().includes('/api/evaluation-registration') && response.request().method() === 'POST'
+            )
+            await page.getByRole('button', { name: 'Register & Pay at Evaluation' }).click()
+            const cashResponse = await cashResponsePromise
+            const cashBody = await cashResponse.json()
+            if (cashResponse.status() !== 200 || !cashBody.ok || cashBody.paymentChoice !== 'at_session' || cashBody.paymentUrl !== null || !cashBody.registrationId) {
+              throw new Error(`Pay-at-evaluation failed: ${cashResponse.status()} ${JSON.stringify(cashBody)}`)
+            }
+            await page.locator('.success-card').waitFor({ state: 'visible' })
+            results.push({ flow: 'cash', grade: cashGrade, ...cashBody, email: `thrive.integration.cash.${runId}@example.com` })
+
+            const onlineGrade = await fillCommon({ suffix: 'Online', dob: '2012-05-20', expectedGrade: 'Grade 9' })
+            await page.getByRole('button', { name: /Pay Now/i }).click()
+            await page.route('https://buy.stripe.com/**', (route) => route.abort())
+            const onlineResponsePromise = page.waitForResponse((response) =>
+              response.url().includes('/api/evaluation-registration') && response.request().method() === 'POST'
+            )
+            await page.getByRole('button', { name: /Register & Pay \$30/i }).click()
+            const onlineResponse = await onlineResponsePromise
+            const onlineBody = await onlineResponse.json()
+            if (onlineResponse.status() !== 200 || !onlineBody.ok || onlineBody.paymentChoice !== 'online' || !onlineBody.registrationId || !onlineBody.paymentUrl) {
+              throw new Error(`Pay-now registration failed: ${onlineResponse.status()} ${JSON.stringify(onlineBody)}`)
+            }
+            const paymentUrl = new URL(onlineBody.paymentUrl)
+            if (paymentUrl.origin !== 'https://buy.stripe.com' || paymentUrl.searchParams.get('client_reference_id') !== onlineBody.registrationId) {
+              throw new Error(`Stripe handoff is incorrect: ${onlineBody.paymentUrl}`)
+            }
+            results.push({ flow: 'online', grade: onlineGrade, ...onlineBody, email: `thrive.integration.online.${runId}@example.com` })
+
+            console.log('THRIVE_LIVE_TEST_RESULT=' + JSON.stringify(results))
+          } finally {
+            await browser.close()
+          }
+          NODE
