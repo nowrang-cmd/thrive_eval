@@ -10,6 +10,7 @@ const initialForm = {
 }
 
 const grades = ['Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12','Prep','College / University','Other']
+const todayIso = new Date().toISOString().slice(0, 10)
 
 function currentSchoolYearStart() {
   const today = new Date()
@@ -17,9 +18,13 @@ function currentSchoolYearStart() {
 }
 
 function suggestedGradeFromBirthYear(birthYear) {
-  const grade = currentSchoolYearStart() - Number(birthYear) - 5
-  if (!Number.isFinite(grade)) return ''
-  return `Grade ${Math.min(12, Math.max(4, grade))}`
+  const numericBirthYear = Number(birthYear)
+  if (!Number.isInteger(numericBirthYear)) return ''
+
+  const grade = currentSchoolYearStart() - numericBirthYear - 5
+  if (grade < 4 || grade > 12) return ''
+
+  return `Grade ${grade}`
 }
 
 export default function App() {
@@ -108,13 +113,13 @@ export default function App() {
           <div className="grid two">
             <Field label="First Name *"><input name="athleteFirstName" value={form.athleteFirstName} onChange={change} required /></Field>
             <Field label="Last Name *"><input name="athleteLastName" value={form.athleteLastName} onChange={change} required /></Field>
-            <Field label="Date of Birth *"><input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={change} required /></Field>
+            <Field label="Date of Birth *"><input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={change} max={todayIso} required /></Field>
             <Field label="Grade / Level *">
               <select name="grade" value={form.grade} onChange={change} required>
                 <option value="">Select</option>
                 {grades.map((grade) => <option key={grade}>{grade}</option>)}
               </select>
-              <small className="field-help">Suggested automatically from date of birth. Change it if the athlete's current grade is different.</small>
+              <small className="field-help">Suggested automatically from date of birth when the age maps to Grade 4–12. Change it when needed.</small>
             </Field>
             <Field label="Position"><input name="position" value={form.position} onChange={change} placeholder="Guard, Wing, Forward..." /></Field>
             <Field label="School"><input name="school" value={form.school} onChange={change} /></Field>
