@@ -1,14 +1,23 @@
+import { randomUUID } from 'node:crypto'
+
 const EVALUATION_FEE = 30
 const ALLOWED_PAYMENT_CHOICES = new Set(['online', 'at_session'])
 const DEFAULT_EVALUATION_PAYMENT_LINK = 'https://buy.stripe.com/4gM8wP8sNcoXdz270P2400i'
+const DEFAULT_SUPABASE_URL = 'https://nbofhqsjkbacwtwpwjai.supabase.co'
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ib2ZocXNqa2JhY3d0d3B3amFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMDU5OTMsImV4cCI6MjA5MzU4MTk5M30.qqnf7USGuTf-YCsBKdq4u-9DddIJf2a702OBHLbFg_A'
 
 const clean = (value, max = 3000) => String(value ?? '').replace(/\u0000/g, '').trim().slice(0, max)
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function getSupabaseConfig() {
-  const url = clean(process.env.SUPABASE_URL || process.env.THRIVE_SUPABASE_URL, 500).replace(/\/+$/, '')
-  const key = clean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.THRIVE_SUPABASE_SERVICE_ROLE_KEY, 2000)
-  if (!url || !key) throw new Error('THRiVE intake backend is not configured.')
+  const url = clean(
+    process.env.SUPABASE_URL || process.env.THRIVE_SUPABASE_URL || DEFAULT_SUPABASE_URL,
+    500
+  ).replace(/\/+$/, '')
+  const key = clean(
+    process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY,
+    2000
+  )
   return { url, key }
 }
 
@@ -20,18 +29,18 @@ async function createSubmission(payload) {
       apikey: key,
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
-      Prefer: 'return=representation',
+      Prefer: 'return=minimal',
     },
     body: JSON.stringify(payload),
   })
-  const raw = await response.text()
-  let body = null
-  try { body = raw ? JSON.parse(raw) : null } catch { body = null }
+
   if (!response.ok) {
+    const raw = await response.text()
     console.error('THRiVE evaluation registration insert failed:', response.status, raw)
     throw new Error('We could not save the evaluation registration. Please try again.')
   }
-  return Array.isArray(body) ? body[0] : body
+
+  return { id: payload.id }
 }
 
 function paymentUrlFor(submissionId) {
@@ -86,8 +95,10 @@ export default async function handler(req, res) {
 
   const online = paymentChoice === 'online'
   const now = new Date().toISOString()
+  const submissionId = randomUUID()
 
   const payload = {
+    id: submissionId,
     athlete_first_name: athleteFirstName,
     athlete_last_name: athleteLastName,
     athlete_name: `${athleteFirstName} ${athleteLastName}`.trim(),
@@ -136,19 +147,19 @@ export default async function handler(req, res) {
 
   try {
     const submission = await createSubmission(payload)
-    const paymentUrl = online ? paymentUrlFor(submission?.id) : null
+    const paymentUrl = online ? paymentUrlFor(submission.id) : null
 
     if (online && !paymentUrl) {
       return res.status(503).json({
         ok: false,
-        registrationId: submission?.id,
+        registrationId: submission.id,
         error: 'Registration was saved, but online payment is not configured yet. Please choose Pay at Evaluation or contact THRiVE.',
       })
     }
 
     return res.status(200).json({
       ok: true,
-      registrationId: submission?.id,
+      registrationId: submission.id,
       paymentChoice,
       paymentUrl,
     })
