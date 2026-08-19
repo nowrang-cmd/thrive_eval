@@ -1,5 +1,6 @@
 const EVALUATION_FEE = 30
 const ALLOWED_PAYMENT_CHOICES = new Set(['online', 'at_session'])
+const DEFAULT_EVALUATION_PAYMENT_LINK = 'https://buy.stripe.com/4gM8wP8sNcoXdz270P2400i'
 
 const clean = (value, max = 3000) => String(value ?? '').replace(/\u0000/g, '').trim().slice(0, max)
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -34,7 +35,10 @@ async function createSubmission(payload) {
 }
 
 function paymentUrlFor(submissionId) {
-  const link = clean(process.env.THRIVE_EVALUATION_PAYMENT_LINK, 1200)
+  const link = clean(
+    process.env.THRIVE_EVALUATION_PAYMENT_LINK || DEFAULT_EVALUATION_PAYMENT_LINK,
+    1200
+  )
   if (!link) return null
   const url = new URL(link)
   url.searchParams.set('client_reference_id', submissionId)
