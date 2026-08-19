@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
 const EVALUATION_FEE = 30
+const LIGHT_BACKGROUND_LOGO = 'https://os.thrivebasketball.org/logos/white_logo.jpg'
 
 const initialForm = {
   athleteFirstName: '', athleteLastName: '', dateOfBirth: '', grade: '', position: '', school: '', athleteEmail: '',
@@ -53,7 +54,7 @@ export default function App() {
     return (
       <main className="page-shell">
         <section className="success-card">
-          <img className="brand-logo" src="https://os.thrivebasketball.org/large_logo.png" alt="THRiVE Basketball Academy" />
+          <img className="brand-logo" src={LIGHT_BACKGROUND_LOGO} alt="THRiVE Basketball Academy" />
           <span className="eyebrow">Registration received</span>
           <h1>YOUR EVALUATION JOURNEY HAS STARTED.</h1>
           <p>{message}</p>
@@ -67,7 +68,7 @@ export default function App() {
   return (
     <main className="page-shell">
       <header className="topbar">
-        <img className="brand-logo" src="https://os.thrivebasketball.org/large_logo.png" alt="THRiVE Basketball Academy" />
+        <img className="brand-logo" src={LIGHT_BACKGROUND_LOGO} alt="THRiVE Basketball Academy" />
         <div className="topbar-copy"><strong>Development Evaluation Registration</strong><span>Mind • Body • Skill</span></div>
       </header>
 
