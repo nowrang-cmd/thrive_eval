@@ -11,6 +11,17 @@ const initialForm = {
 
 const grades = ['Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12','Prep','College / University','Other']
 
+function currentSchoolYearStart() {
+  const today = new Date()
+  return today.getMonth() >= 6 ? today.getFullYear() : today.getFullYear() - 1
+}
+
+function suggestedGradeFromBirthYear(birthYear) {
+  const grade = currentSchoolYearStart() - Number(birthYear) - 5
+  if (!Number.isFinite(grade)) return ''
+  return `Grade ${Math.min(12, Math.max(4, grade))}`
+}
+
 export default function App() {
   const [form, setForm] = useState(initialForm)
   const [status, setStatus] = useState('idle')
@@ -20,7 +31,17 @@ export default function App() {
 
   function change(event) {
     const { name, value, type, checked } = event.target
-    setForm((current) => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
+    setForm((current) => {
+      const next = { ...current, [name]: type === 'checkbox' ? checked : value }
+
+      if (name === 'dateOfBirth') {
+        const birthYear = /^\d{4}-\d{2}-\d{2}$/.test(value) ? Number(value.slice(0, 4)) : NaN
+        next.grade = suggestedGradeFromBirthYear(birthYear)
+      }
+
+      return next
+    })
+    setMessage('')
   }
 
   async function submit(event) {
@@ -88,7 +109,13 @@ export default function App() {
             <Field label="First Name *"><input name="athleteFirstName" value={form.athleteFirstName} onChange={change} required /></Field>
             <Field label="Last Name *"><input name="athleteLastName" value={form.athleteLastName} onChange={change} required /></Field>
             <Field label="Date of Birth *"><input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={change} required /></Field>
-            <Field label="Grade / Level *"><select name="grade" value={form.grade} onChange={change} required><option value="">Select</option>{grades.map((grade) => <option key={grade}>{grade}</option>)}</select></Field>
+            <Field label="Grade / Level *">
+              <select name="grade" value={form.grade} onChange={change} required>
+                <option value="">Select</option>
+                {grades.map((grade) => <option key={grade}>{grade}</option>)}
+              </select>
+              <small className="field-help">Suggested automatically from date of birth. Change it if the athlete's current grade is different.</small>
+            </Field>
             <Field label="Position"><input name="position" value={form.position} onChange={change} placeholder="Guard, Wing, Forward..." /></Field>
             <Field label="School"><input name="school" value={form.school} onChange={change} /></Field>
             <Field label="Athlete Email"><input type="email" name="athleteEmail" value={form.athleteEmail} onChange={change} /></Field>
