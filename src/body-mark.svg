@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Body</title>
+  <g fill="none" stroke="#7BAFD4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="42" cy="10" r="5"/>
+    <path d="m36 20-7 11 8 7 5-9 8 7 8-3"/>
+    <path d="m30 30-9-1-7 7M37 38l-4 11-11 8M42 29l-2-9-8-5-8 5"/>
+    <path d="M14 50c5.5 0 9.5 1.6 12 5M42 49c4.4 0 8.1 1.4 11 4" opacity=".75"/>
+  </g>
+</svg>
