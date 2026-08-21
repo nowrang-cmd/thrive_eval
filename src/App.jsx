@@ -249,7 +249,19 @@ function PathwayPanel() {
 }
 
 function Footer() {
-  return <footer className="site-footer"><div className="footer-main"><div className="footer-brand"><img src={LOGO} alt="THRiVE Basketball Academy"/><p>Developing Athletes.<br/>Building Better People.</p><div className="socials"><a href="https://www.instagram.com/thrivebasketballacademy" aria-label="Instagram"><Icon name="instagram"/></a><a href="https://www.facebook.com/thrivebasketballacademy" aria-label="Facebook"><Icon name="facebook"/></a><a href="https://www.youtube.com/@THRiVEBasketballAcademy" aria-label="YouTube"><Icon name="youtube"/></a></div></div><FooterCol title="EXPLORE" links={['Home','About','Development','Training','Results','Opportunity','Evaluation','Contact']} /><FooterCol title="PORTALS" links={['Athlete Portal','Parent Portal']} /><div className="footer-col"><h3>GET STARTED</h3><a href="#registration">Get Evaluated</a><span>Secure registration and payment</span></div><div className="footer-col"><h3>CONNECT</h3><a href="mailto:info@thrivebasketball.org">info@thrivebasketball.org</a><span>Winnipeg, Manitoba,<br/>Canada</span></div></div><div className="facility-strip"><p>WE TRAIN ATHLETES ACROSS TRUSTED WINNIPEG FACILITIES.</p><div>{facilities.map((f) => <span key={f}><Icon name="building"/><b>{f}</b></span>)}</div></div><div className="footer-legal"><span>© 2026 THRiVE Basketball Academy.</span><span>FOUNDED BY: &nbsp; Manoj Nowrang &nbsp;/&nbsp; Matt Dunning &nbsp;/&nbsp; Frankie Tocci</span></div></footer>
+  return <footer className="site-footer"><div className="footer-main"><div className="footer-brand"><img src={LOGO} alt="THRiVE Basketball Academy"/><p>Developing Athletes.<br/>Building Better People.</p><div className="socials"><a href="https://www.instagram.com/thrivebasketballacademy" aria-label="Instagram"><Icon name="instagram"/></a><a href="https://www.facebook.com/thrivebasketballacademy" aria-label="Facebook"><Icon name="facebook"/></a><a href="https://www.youtube.com/@THRiVEBasketballAcademy" aria-label="YouTube"><Icon name="youtube"/></a></div></div><FooterCol title="EXPLORE" links={['Home','About','Development','Training','Results','Opportunity','Evaluation','Contact']} /><FooterCol title="PORTALS" links={['Athlete Portal','Parent Portal']} /><div className="footer-col"><h3>GET STARTED</h3><a href="#registration">Get Evaluated</a><span>Secure registration and payment</span></div><div className="footer-col"><h3>CONNECT</h3><a href="mailto:info@thrivebasketball.org">info@thrivebasketball.org</a><span>Winnipeg, Manitoba,<br/>Canada</span></div></div><div className="facility-strip"><p>WE TRAIN ATHLETES ACROSS TRUSTED WINNIPEG FACILITIES.</p><div>{facilities.map((f) => <span key={f}><FacilityIcon facility={f}/><b>{f}</b></span>)}</div></div><div className="footer-legal"><span>© 2026 THRiVE Basketball Academy.</span><span>FOUNDED BY: &nbsp; Manoj Nowrang &nbsp;/&nbsp; Matt Dunning &nbsp;/&nbsp; Frankie Tocci</span></div></footer>
+}
+
+function FacilityIcon({ facility }) {
+  const common = { fill:'none', stroke:'currentColor', strokeWidth:'2.4', strokeLinecap:'round', strokeLinejoin:'round' }
+  const marks = {
+    'Sport for Life Centre': <><path d="M6 42h52M10 42V23L32 9l22 14v19M14 23h36M25 42V30h14v12M17 31h5M42 31h5"/><circle cx="32" cy="19" r="3"/></>,
+    'Garden City Collegiate': <><path d="M5 42h54M9 42V25h13v17M42 42V25h13v17M22 42V16L32 8l10 8v26M28 42V31h8v11"/><circle cx="32" cy="21" r="3"/><path d="M15 31h3M46 31h3"/></>,
+    'University of Winnipeg': <><path d="M5 42h54M9 37h46M12 18h40M8 14h48L32 6 8 14ZM15 18v19M25 18v19M39 18v19M49 18v19"/></>,
+    'Canadian Mennonite University': <><path d="M5 42h54M10 42V22h15v20M25 42V10h15v32M40 42V26h14v16M15 28h5M15 34h5M30 17h5M30 24h5M30 31h5M45 32h4"/></>,
+    'University of Manitoba': <><path d="M5 42h54M9 38h46M12 20h40v18M16 20 32 8l16 12M19 38V25M27 38V25M37 38V25M45 38V25"/><path d="M28 12a4 4 0 0 1 8 0"/></>,
+  }
+  return <svg className="facility-icon" viewBox="0 0 64 48" aria-hidden="true" {...common}>{marks[facility]}</svg>
 }
 
 function FooterCol({ title, links }) { return <div className="footer-col"><h3>{title}</h3>{links.map((link) => <a key={link} href={link.includes('Portal') ? `https://${link.startsWith('Athlete') ? 'athlete' : 'parent'}.thrivebasketball.org` : `${SITE}${link === 'Home' ? '' : `/${link.toLowerCase()}`}`}>{link}</a>)}</div> }
@@ -263,7 +275,7 @@ function Icon({ name }) {
     family: <><circle cx="9" cy="8" r="2.5"/><circle cx="16" cy="9" r="2"/><path d="M3.5 19c.5-3.4 2.2-5.2 5.5-5.2 3.1 0 4.8 1.6 5.3 4.7M14 14.2c2.8-.2 5 1.3 5.6 4.3"/></>,
     mind: <><path d="M9.4 19.5H7.2v-4.1A6.7 6.7 0 0 1 5 10.5 7 7 0 0 1 12 3.4a7 7 0 0 1 7 7.1c0 3-1.8 5.5-4.4 6.6v2.4h-2.2"/><path d="M9 8.3c.3-1.3 1.2-2 2.4-2 .8 0 1.5.4 1.9 1.1.5-.2 1.1-.1 1.5.3.7.6.7 1.6.2 2.3.6.5.8 1.4.5 2.2-.4.8-1.2 1.2-2 1.1-.5.7-1.5 1-2.3.7-.6.5-1.5.6-2.1.2-.7-.4-1-1.2-.8-1.9-.7-.4-1.1-1.2-.9-2 .1-.9.7-1.6 1.6-2z"/></>,
     runner: <><circle cx="14.7" cy="4.5" r="1.8"/><path d="m12 7.3-2 4 3.4 2.1 2.5-3 2.9 2.1M10 11.3l-2.9 2.4-2.3 4.2M13.4 13.4l-1 5.2M11.1 8.9 8 7.8 5.9 9.2"/></>,
-    ball: <><circle cx="12" cy="12" r="9"/><path d="M4.2 7.6c4.8.4 9.2 4.5 11.2 10.8M8.2 3.9c4 4.7 4.8 10.1 2.5 16.7M16.7 4.3c-1 3.7-4.4 6.4-8.4 6.4M19.9 8.2c-3.2.7-5.8 3-6.8 6.1M4.1 16.5c3.4-1 7.1-.7 10.2 1"/></>,
+    ball: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M6.2 5.6c6 3.8 6 9 0 12.8M17.8 5.6c-6 3.8-6 9 0 12.8"/></>,
     clipboard: <><path d="M8 5H5.5v16h13V5H16"/><rect x="8" y="3" width="8" height="4" rx="1"/><path d="m8 12 1.2 1.2 2.2-2.5M13 12h3M8 17l1.2 1.2 2.2-2.5M13 17h3"/></>,
     shield: <><path d="M12 3 4.5 6v5.3c0 4.8 3 8.2 7.5 9.7 4.5-1.5 7.5-4.9 7.5-9.7V6L12 3z"/><path d="m8.7 12.2 2.1 2.1 4.5-5"/></>,
     gift: <><rect x="4" y="9" width="16" height="12" rx="1"/><path d="M3 6h18v4H3zM12 6v15M12 6H8.7a2.2 2.2 0 1 1 2.2-2.2L12 6zm0 0h3.3a2.2 2.2 0 1 0-2.2-2.2L12 6z"/></>,
