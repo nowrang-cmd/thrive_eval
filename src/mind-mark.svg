@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Mind</title>
+  <g fill="none" stroke="#7BAFD4" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="32" cy="32" r="25"/>
+    <path d="M32 20v24"/>
+    <path d="M32 22c-2.2-3.8-8.8-3.2-9.4 1.6-4.3.4-5.5 6.1-2.1 8.3-2.7 3.4-.3 8.4 4 8.1 1 4.4 6.6 4.7 7.5 1"/>
+    <path d="M32 22c2.2-3.8 8.8-3.2 9.4 1.6 4.3.4 5.5 6.1 2.1 8.3 2.7 3.4.3 8.4-4 8.1-1 4.4-6.6 4.7-7.5 1"/>
+    <path d="M23 29c2.7-.1 4.4 1.4 4.9 3.7M41 29c-2.7-.1-4.4 1.4-4.9 3.7"/>
+  </g>
+</svg>
