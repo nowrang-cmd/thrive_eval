@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import evaluationHero from './evaluationHeroData'
+import { bodyIcon, mindIcon, skillIcon } from './heroIconData'
 
 const EVALUATION_FEE = 30
 const LOGO = 'https://os.thrivebasketball.org/logos/white_logo.jpg'
@@ -222,7 +223,11 @@ function Header({ menuOpen, setMenuOpen }) {
   return <header className="site-header"><a href={SITE} aria-label="THRiVE home"><img src={LOGO} alt="THRiVE Basketball Academy" /></a><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}><span/><span/><span/><b>Menu</b></button><nav className={menuOpen ? 'open' : ''}>{links.map(([label,path]) => <a key={label} className={label === 'EVALUATION' ? 'active' : ''} href={`${SITE}${path}`}>{label}</a>)}</nav><div className="header-actions"><div className="portal-links"><a href="https://athlete.thrivebasketball.org"><Icon name="user" />Athlete Portal</a><a href="https://parent.thrivebasketball.org"><Icon name="family" />Parent Portal</a></div><a className="header-cta" href="#registration">GET EVALUATED</a></div></header>
 }
 
-function Pillar({ icon, title, copy }) { return <div className="hero-pillar"><Icon name={icon}/><div><strong>{title}</strong><span>{copy}</span></div></div> }
+const heroIcons = { mind: mindIcon, runner: bodyIcon, ball: skillIcon }
+
+function Pillar({ icon, title, copy }) {
+  return <div className="hero-pillar"><img src={heroIcons[icon]} alt="" aria-hidden="true"/><div><strong>{title}</strong><span>{copy}</span></div></div>
+}
 function Field({ label, required, children }) { return <label className="field"><span>{label}{required && <b> *</b>}</span>{children}</label> }
 function Counter({ value }) { return <small className="counter">{value.length}/500</small> }
 function Check({ name, checked, onChange, required, children }) { return <label className="check"><input type="checkbox" name={name} checked={checked} onChange={onChange} required={required}/><span>{children}</span></label> }
