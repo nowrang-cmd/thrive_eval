@@ -196,6 +196,15 @@
   }
 
 </style>
+
+<!-- Supabase Connection -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+const SUPABASE_URL = "https://ezqzmnvmfutugphervvj.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
+
 </head>
 <body>
 
@@ -503,45 +512,129 @@ async function handleSubmit() {
   const evalDate    = document.getElementById("evalDate").value;
   const session     = document.getElementById("session").value;
   const position    = document.getElementById("position").value;
-  const birthYear      = document.getElementById("birthYear").value;
+  const birthYear   = document.getElementById("birthYear").value;
   const noteStrengths  = document.getElementById("noteStrengths").value.trim();
   const noteChallenges = document.getElementById("noteChallenges").value.trim();
   const noteNextSteps  = document.getElementById("noteNextSteps").value.trim();
-  const errorEl     = document.getElementById("errorMsg");
-  const btn         = document.getElementById("submitBtn");
+  const errorEl = document.getElementById("errorMsg");
+  const btn     = document.getElementById("submitBtn");
 
   if (!playerFirst || !playerLast || !coachName || !evalDate || !position) {
+    errorEl.textContent = "Please fill in Player Name, Coach, Date and Position before submitting.";
     errorEl.style.display = "block";
     return;
   }
+
   errorEl.style.display = "none";
 
   const { raw, weighted } = updateOverall();
-  const placement = getPlacement(parseFloat(weighted));
+  const rawAverage = parseFloat(raw);
+  const weightedScore = parseFloat(weighted);
+  const placement = getPlacement(weightedScore);
+
+  const calculatedOVR = Math.round(weightedScore * 9.9);
+
+  // This assumes your shooting category id is "shooting".
+  // If your category id is different, this fallback still prevents the save from breaking.
+  const shootingScore10 = scores.shooting || scores.Shooting || rawAverage;
+  const shootingOVR = Math.round(shootingScore10 * 9.9);
 
   const payload = {
     playerFirst, playerLast, playerName, coachName, evalDate, session, position,
     birthYear, noteStrengths, noteChallenges, noteNextSteps, evalType,
     rawAverage: raw, weightedScore: weighted, placement: placement.label,
+    ovr: calculatedOVR,
+    shooting_ovr: shootingOVR,
     ...scores
   };
 
   btn.disabled = true;
   btn.innerHTML = '<span class="loading-spinner"></span>Submitting...';
 
-  const params = new URLSearchParams(payload).toString();
-  const url = APPS_SCRIPT_URL + "?" + params;
-  const script = document.createElement("script");
-  script.src = url;
-  script.onload = () => script.remove();
-  script.onerror = () => script.remove();
-  document.body.appendChild(script);
-  await new Promise(r => setTimeout(r, 800));
+  try {
+    // 1. Save to the existing Google Apps Script system so your current dashboard flow still works.
+    const params = new URLSearchParams(payload).toString();
+    const url = APPS_SCRIPT_URL + "?" + params;
+    const script = document.createElement("script");
+    script.src = url;
+    script.onload = () => script.remove();
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+    await new Promise(r => setTimeout(r, 800));
 
-  btn.innerHTML = "Submit Evaluation";
-  btn.disabled = false;
-  showConfirmation(payload, placement);
+    // 2. Save the same evaluation result into Supabase for the THRiVE Program App.
+    if (!window.supabase || typeof supabase === "undefined") {
+      throw new Error("Supabase is not connected. Check the Supabase script in the <head>.");
+    }
+
+    let playerQuery = supabase
+      .from("players")
+      .select("id, first_name, last_name, full_name, birth_year")
+      .ilike("first_name", playerFirst)
+      .ilike("last_name", playerLast);
+
+    if (birthYear) {
+      playerQuery = playerQuery.eq("birth_year", parseInt(birthYear));
+    }
+
+    let { data: matchedPlayers, error: matchError } = await playerQuery.limit(1);
+
+    if (matchError) throw matchError;
+
+    // Fallback: if birth year prevented a match, search by name only.
+    if (!matchedPlayers || matchedPlayers.length === 0) {
+      const fallback = await supabase
+        .from("players")
+        .select("id, first_name, last_name, full_name, birth_year")
+        .ilike("first_name", playerFirst)
+        .ilike("last_name", playerLast)
+        .limit(1);
+
+      if (fallback.error) throw fallback.error;
+      matchedPlayers = fallback.data;
+    }
+
+    if (!matchedPlayers || matchedPlayers.length === 0) {
+      throw new Error("No matching player found in Supabase. Check first name, last name, and birth year.");
+    }
+
+    const playerId = matchedPlayers[0].id;
+
+    const { error: updateError } = await supabase
+      .from("players")
+      .update({
+        first_name: playerFirst,
+        last_name: playerLast,
+        full_name: playerName,
+        name: playerName,
+        position: position,
+        birth_year: birthYear ? parseInt(birthYear) : null,
+        grade_level: session,
+        ovr: calculatedOVR,
+        shooting_ovr: shootingOVR,
+        strengths: noteStrengths,
+        challenges: noteChallenges,
+        next_steps: noteNextSteps
+      })
+      .eq("id", playerId);
+
+    if (updateError) throw updateError;
+
+    console.log("✅ Evaluation saved to Supabase for:", playerName);
+
+    btn.innerHTML = "Submit Evaluation";
+    btn.disabled = false;
+    showConfirmation(payload, placement);
+
+  } catch (err) {
+    console.error("❌ Evaluation save error:", err);
+    errorEl.textContent = "Save failed: " + err.message;
+    errorEl.style.display = "block";
+    btn.disabled = false;
+    btn.innerHTML = "Submit Evaluation";
+  }
 }
+
 
 function drawRadar(canvasId, data) {
   const canvas = document.getElementById(canvasId);
