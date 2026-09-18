@@ -1,4 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
+import {
+  clearEvaluationRegistrationAttempt,
+  evaluationRegistrationErrorMessage,
+  submitEvaluationRegistration,
+} from './evaluationRegistration'
 import evaluationHero from './evaluationHeroData'
 import mindMark from './mind-mark.svg'
 import bodyMark from './body-mark.svg'
@@ -37,8 +42,6 @@ export default function App() {
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
-  const athleteName = useMemo(() => `${form.athleteFirstName} ${form.athleteLastName}`.trim(), [form.athleteFirstName, form.athleteLastName])
-
   function change(event) {
     const { name, value, type, checked } = event.target
     setForm((current) => {
@@ -54,54 +57,61 @@ export default function App() {
 
   async function submit(event) {
     event.preventDefault()
+    if (status === 'submitting') return
     if (!form.termsConsent || !form.feeAcknowledgement || !form.waiverAcknowledgement) {
       setStatus('error')
       setMessage('Please complete the required consent and acknowledgement items.')
       return
     }
+    const submittedForm = { ...form }
+    const submittedAthleteName =
+      `${submittedForm.athleteFirstName} ${submittedForm.athleteLastName}`.trim()
+
+    const contextNotes = [
+      submittedForm.notes,
+      `Gender: ${submittedForm.gender || 'Not provided'}`,
+      `City: ${submittedForm.city || 'Not provided'}`,
+      `Height: ${submittedForm.height || 'Not provided'}`,
+      `Weight: ${submittedForm.weight || 'Not provided'}`,
+      `Preferred evaluation location: ${submittedForm.preferredLocation || 'No preference'}`,
+      `Availability: ${submittedForm.availabilityNotes || 'Not provided'}`,
+      `New to THRiVE: ${submittedForm.newToThrive || 'Not provided'}`,
+      `Evaluation communications consent: ${submittedForm.communicationsConsent ? 'Yes' : 'No'}`,
+    ].filter(Boolean).join('\n')
+
     setStatus('submitting')
     setMessage('')
 
-    const contextNotes = [
-      form.notes,
-      `Gender: ${form.gender || 'Not provided'}`,
-      `City: ${form.city || 'Not provided'}`,
-      `Height: ${form.height || 'Not provided'}`,
-      `Weight: ${form.weight || 'Not provided'}`,
-      `Preferred evaluation location: ${form.preferredLocation || 'No preference'}`,
-      `Availability: ${form.availabilityNotes || 'Not provided'}`,
-      `New to THRiVE: ${form.newToThrive || 'Not provided'}`,
-      `Evaluation communications consent: ${form.communicationsConsent ? 'Yes' : 'No'}`,
-    ].filter(Boolean).join('\n')
-
-    const payload = {
-      ...form,
-      highestLevelPlayed: form.basketballLevel,
-      notes: contextNotes,
-      consent: form.termsConsent && form.feeAcknowledgement && form.waiverAcknowledgement,
-    }
-
     try {
-      const response = await fetch('/api/evaluation-registration', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      const result = await submitEvaluationRegistration({
+        endpoint: import.meta.env.VITE_THRIVE_OS_PUBLIC_EVALUATION_INTAKE_URL,
+        form: submittedForm,
+        notes: contextNotes,
       })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result.error || 'Registration could not be submitted.')
       if (result.paymentUrl) {
         window.location.assign(result.paymentUrl)
         return
       }
       setStatus('success')
-      setMessage(`Registration received for ${athleteName || 'the athlete'}. The $${EVALUATION_FEE} evaluation fee will be collected at the scheduled evaluation.`)
+      setMessage(result.paymentUnavailable
+        ? `Registration received for ${submittedAthleteName || 'the athlete'}. Online payment is temporarily unavailable, but the registration was saved. THRiVE will follow up about payment.`
+        : `Registration received for ${submittedAthleteName || 'the athlete'}. The $${EVALUATION_FEE} evaluation fee will be collected at the scheduled evaluation.`)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
       setStatus('error')
-      setMessage(error.message)
+      setMessage(evaluationRegistrationErrorMessage(error))
     }
   }
 
+  function reset() {
+    clearEvaluationRegistrationAttempt()
+    setForm(initialForm)
+    setStatus('idle')
+    setMessage('')
+  }
+
   if (status === 'success') {
-    return <Success message={message} onReset={() => { setForm(initialForm); setStatus('idle'); setMessage('') }} />
+    return <Success message={message} onReset={reset} />
   }
 
   return (
@@ -124,7 +134,15 @@ export default function App() {
         </section>
 
         <section className="registration-wrap">
-          <form className="registration-card" onSubmit={submit}>
+          <form
+            className="registration-card"
+            onSubmit={submit}
+            aria-busy={status === 'submitting'}
+          >
+            <fieldset
+              className="registration-fields"
+              disabled={status === 'submitting'}
+            >
             <div className="form-intro">
               <Icon name="user" />
               <div><h2>ATHLETE EVALUATION REGISTRATION</h2><p>Please complete all required fields.</p></div>
@@ -197,6 +215,7 @@ export default function App() {
               <button className="submit-button" disabled={status === 'submitting'}><Icon name="lock" />{status === 'submitting' ? 'SUBMITTING…' : form.paymentChoice === 'online' ? 'CONTINUE TO SECURE PAYMENT' : 'SUBMIT REGISTRATION'}</button>
               <p className="secure-copy"><Icon name="lock" />Your information is protected and submitted securely.</p>
             </div>
+            </fieldset>
           </form>
 
           <aside className="form-sidebar">

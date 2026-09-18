@@ -1,179 +1,293 @@
 import { randomUUID } from 'node:crypto'
+import { resolveApprovedEvaluationPaymentUrl } from '../src/evaluationPaymentUrl.js'
 
-const EVALUATION_FEE = 30
-const ALLOWED_PAYMENT_CHOICES = new Set(['online', 'at_session'])
-const DEFAULT_EVALUATION_PAYMENT_LINK = 'https://buy.stripe.com/4gM8wP8sNcoXdz270P2400i'
-const DEFAULT_SUPABASE_URL = 'https://nbofhqsjkbacwtwpwjai.supabase.co'
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ib2ZocXNqa2JhY3d0d3B3amFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMDU5OTMsImV4cCI6MjA5MzU4MTk5M30.qqnf7USGuTf-YCsBKdq4u-9DddIJf2a702OBHLbFg_A'
+const INTAKE_PATH = '/api/public-evaluation-intake'
+const MAX_BODY_BYTES = 20_000
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._~-]{16,200}$/
+const COMPATIBILITY_SUNSET = new Date('2026-12-31T23:59:59.000Z')
 
-const clean = (value, max = 3000) => String(value ?? '').replace(/\u0000/g, '').trim().slice(0, max)
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function getSupabaseConfig() {
-  const url = clean(
-    process.env.SUPABASE_URL || process.env.THRIVE_SUPABASE_URL || DEFAULT_SUPABASE_URL,
-    500
-  ).replace(/\/+$/, '')
-  const key = clean(
-    process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY,
-    2000
+function headerValue(request, name) {
+  const headers = request?.headers || {}
+  const direct = headers[name] ?? headers[name.toLowerCase()]
+  if (direct !== undefined) return Array.isArray(direct) ? direct[0] : direct
+  const match = Object.entries(headers).find(
+    ([headerName]) => headerName.toLowerCase() === name.toLowerCase()
   )
-  return { url, key }
+  const value = match?.[1]
+  return Array.isArray(value) ? value[0] : value
 }
 
-async function createSubmission(payload) {
-  const { url, key } = getSupabaseConfig()
-  const response = await fetch(`${url}/rest/v1/evaluation_submissions`, {
-    method: 'POST',
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify(payload),
-  })
-
-  if (!response.ok) {
-    const raw = await response.text()
-    console.error('THRiVE evaluation registration insert failed:', response.status, raw)
-    throw new Error('We could not save the evaluation registration. Please try again.')
-  }
-
-  return { id: payload.id }
-}
-
-function paymentUrlFor(submissionId) {
-  const link = clean(
-    process.env.THRIVE_EVALUATION_PAYMENT_LINK || DEFAULT_EVALUATION_PAYMENT_LINK,
-    1200
-  )
-  if (!link) return null
-  const url = new URL(link)
-  url.searchParams.set('client_reference_id', submissionId)
-  return url.toString()
-}
-
-function validPastDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const date = new Date(`${value}T00:00:00Z`)
-  if (Number.isNaN(date.getTime())) return false
-  if (date.toISOString().slice(0, 10) !== value) return false
-  return date.getTime() <= Date.now()
-}
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST')
-    return res.status(405).json({ error: 'Method not allowed.' })
-  }
-
-  const data = req.body || {}
-  if (clean(data.website, 200)) return res.status(200).json({ ok: true })
-
-  const athleteFirstName = clean(data.athleteFirstName, 100)
-  const athleteLastName = clean(data.athleteLastName, 100)
-  const dateOfBirth = clean(data.dateOfBirth, 20)
-  const grade = clean(data.grade, 80)
-  const parentFirstName = clean(data.parentFirstName, 100)
-  const parentLastName = clean(data.parentLastName, 100)
-  const parentEmail = clean(data.parentEmail, 320).toLowerCase()
-  const parentPhone = clean(data.parentPhone, 80)
-  const athleteEmail = clean(data.athleteEmail, 320).toLowerCase()
-  const paymentChoice = clean(data.paymentChoice, 30).toLowerCase()
-
-  if (!athleteFirstName || !athleteLastName || !dateOfBirth || !grade || !parentFirstName || !parentLastName || !parentEmail || !parentPhone) {
-    return res.status(400).json({ error: 'Please complete all required fields.' })
-  }
-  if (!emailPattern.test(parentEmail) || (athleteEmail && !emailPattern.test(athleteEmail))) {
-    return res.status(400).json({ error: 'Enter a valid email address.' })
-  }
-  if (athleteEmail && athleteEmail === parentEmail) {
-    return res.status(400).json({ error: 'Athlete and parent emails must be different when both are provided.' })
-  }
-  if (!ALLOWED_PAYMENT_CHOICES.has(paymentChoice)) {
-    return res.status(400).json({ error: 'Choose Pay Now or Pay at Evaluation.' })
-  }
-  if (data.consent !== true) {
-    return res.status(400).json({ error: 'Please confirm the registration consent.' })
-  }
-  if (!validPastDate(dateOfBirth)) {
-    return res.status(400).json({ error: 'Enter a valid date of birth that is not in the future.' })
-  }
-
-  const birthYear = dateOfBirth.slice(0, 4)
-  const online = paymentChoice === 'online'
-  const now = new Date().toISOString()
-  const submissionId = randomUUID()
-
-  const payload = {
-    id: submissionId,
-    athlete_first_name: athleteFirstName,
-    athlete_last_name: athleteLastName,
-    athlete_name: `${athleteFirstName} ${athleteLastName}`.trim(),
-    athlete_email: athleteEmail || null,
-    birth_year: birthYear,
-    grade,
-    evaluation_group: grade,
-    position: clean(data.position, 100) || null,
-    school: clean(data.school, 200) || null,
-    parent_first_name: parentFirstName,
-    parent_last_name: parentLastName,
-    parent_name: `${parentFirstName} ${parentLastName}`.trim(),
-    parent_email: parentEmail,
-    parent_phone: parentPhone,
-    email: parentEmail,
-    phone: parentPhone,
-    years_of_experience: clean(data.yearsExperience, 200) || null,
-    years_experience: clean(data.yearsExperience, 200) || null,
-    highest_level_played: clean(data.highestLevelPlayed, 300) || null,
-    improvement_goals: clean(data.improvementGoals, 3000) || null,
-    what_does_the_athlete_want_to_improve: clean(data.improvementGoals, 3000) || null,
-    goals: clean(data.improvementGoals, 3000),
-    notes: clean(data.notes, 3000) || null,
-    status: 'new',
-    workflow_status: 'New Submission',
-    payment_status: online ? 'unpaid' : 'cash_due',
-    payment_method: online ? 'stripe' : 'pay_at_session',
-    amount_due: EVALUATION_FEE,
-    amount_paid: 0,
-    currency: 'CAD',
-    payment_provider: online ? 'stripe' : 'in_person',
-    evaluation_fee_status: online ? 'unpaid' : 'cash_due',
-    evaluation_fee_paid: false,
-    evaluation_fee_waived: false,
-    evaluation_fee_amount: 0,
-    evaluation_fee_paid_at: null,
-    evaluation_fee_note: online
-      ? `Registration received. $${EVALUATION_FEE} evaluation fee pending Stripe payment.`
-      : `Registration received. $${EVALUATION_FEE} evaluation fee due at the scheduled evaluation.`,
-    source: 'thrive_evaluation_registration',
-    submitted_from: 'thrive_evaluation_registration',
-    submitted_origin: 'https://start.thrivebasketball.org',
-    submitted_at: now,
-    updated_at: now,
-  }
+function normalizedSameOrigin(request) {
+  const rawOrigin = String(headerValue(request, 'origin') || '').trim()
+  const rawHost = String(headerValue(request, 'host') || '').trim().toLowerCase()
+  if (!rawOrigin || !rawHost || /[\s,/@]/.test(rawHost)) return ''
 
   try {
-    const submission = await createSubmission(payload)
-    const paymentUrl = online ? paymentUrlFor(submission.id) : null
+    const origin = new URL(rawOrigin)
+    if (
+      origin.protocol !== 'https:' ||
+      origin.username ||
+      origin.password ||
+      origin.pathname !== '/' ||
+      origin.search ||
+      origin.hash ||
+      origin.host.toLowerCase() !== rawHost
+    ) {
+      return ''
+    }
+    return origin.origin.toLowerCase()
+  } catch {
+    return ''
+  }
+}
 
-    if (online && !paymentUrl) {
-      return res.status(503).json({
+function resolveIntakeEndpoint(env) {
+  const rawEndpoint = String(
+    env.THRIVE_OS_PUBLIC_EVALUATION_INTAKE_URL ||
+      env.VITE_THRIVE_OS_PUBLIC_EVALUATION_INTAKE_URL ||
+      ''
+  ).trim()
+
+  try {
+    const endpoint = new URL(rawEndpoint)
+    if (
+      endpoint.protocol !== 'https:' ||
+      endpoint.username ||
+      endpoint.password ||
+      endpoint.pathname.replace(/\/+$/, '') !== INTAKE_PATH ||
+      endpoint.search ||
+      endpoint.hash
+    ) {
+      return null
+    }
+    endpoint.pathname = INTAKE_PATH
+    return endpoint.toString()
+  } catch {
+    return null
+  }
+}
+
+function responseHeaders(response, origin = '') {
+  response.setHeader('Cache-Control', 'no-store')
+  response.setHeader('Vary', 'Origin')
+  response.setHeader('Deprecation', 'true')
+  response.setHeader('Sunset', COMPATIBILITY_SUNSET.toUTCString())
+  if (origin) {
+    response.setHeader('Access-Control-Allow-Origin', origin)
+    response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    response.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Idempotency-Key'
+    )
+    response.setHeader('Access-Control-Max-Age', '600')
+  }
+}
+
+function sendJson(response, status, body, origin = '') {
+  responseHeaders(response, origin)
+  return response.status(status).json(body)
+}
+
+function serializedBody(request) {
+  let body
+  try {
+    body =
+      typeof request.body === 'string'
+        ? request.body
+        : JSON.stringify(request.body ?? {})
+  } catch {
+    return { error: 'INVALID_JSON' }
+  }
+
+  if (Buffer.byteLength(body, 'utf8') > MAX_BODY_BYTES) {
+    return { error: 'PAYLOAD_TOO_LARGE' }
+  }
+  return { body }
+}
+
+function copyPublicResponseHeader(upstream, response, name) {
+  const value = upstream.headers?.get?.(name)
+  if (value) response.setHeader(name, value)
+}
+
+async function publicResponseBody(upstream) {
+  try {
+    const body = await upstream.json()
+    return body && typeof body === 'object' && !Array.isArray(body) ? body : null
+  } catch {
+    return null
+  }
+}
+
+export function createEvaluationRegistrationForwarder({
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  now = () => Date.now(),
+  randomUUIDImpl = randomUUID,
+} = {}) {
+  return async function evaluationRegistrationForwarder(request, response) {
+    const origin = normalizedSameOrigin(request)
+    if (!origin) {
+      return sendJson(response, 403, {
         ok: false,
-        registrationId: submission.id,
-        error: 'Registration was saved, but online payment is not configured yet. Please choose Pay at Evaluation or contact THRiVE.',
+        code: 'ORIGIN_NOT_ALLOWED',
+        error: 'This registration origin is not allowed.',
       })
     }
 
-    return res.status(200).json({
-      ok: true,
-      registrationId: submission.id,
-      paymentChoice,
-      paymentUrl,
-    })
-  } catch (error) {
-    console.error('THRiVE evaluation registration failure:', error)
-    return res.status(500).json({ error: error?.message || 'Registration could not be completed.' })
+    if (request.method === 'OPTIONS') {
+      responseHeaders(response, origin)
+      return response.status(204).end()
+    }
+    if (request.method !== 'POST') {
+      response.setHeader('Allow', 'POST, OPTIONS')
+      return sendJson(
+        response,
+        405,
+        {
+          ok: false,
+          code: 'METHOD_NOT_ALLOWED',
+          error: 'Method not allowed.',
+        },
+        origin
+      )
+    }
+
+    if (Number(now()) > COMPATIBILITY_SUNSET.getTime()) {
+      return sendJson(
+        response,
+        410,
+        {
+          ok: false,
+          code: 'LEGACY_INTAKE_RETIRED',
+          error: 'This registration page is out of date. Please refresh and try again.',
+        },
+        origin
+      )
+    }
+
+    const endpoint = resolveIntakeEndpoint(env)
+    if (!endpoint || typeof fetchImpl !== 'function') {
+      return sendJson(
+        response,
+        503,
+        {
+          ok: false,
+          code: 'INTAKE_UNAVAILABLE',
+          error: 'Evaluation registration is temporarily unavailable.',
+        },
+        origin
+      )
+    }
+
+    const incomingIdempotencyKey = String(
+      headerValue(request, 'idempotency-key') || ''
+    ).trim()
+    if (
+      incomingIdempotencyKey &&
+      !IDEMPOTENCY_KEY_PATTERN.test(incomingIdempotencyKey)
+    ) {
+      return sendJson(
+        response,
+        400,
+        {
+          ok: false,
+          code: 'INVALID_IDEMPOTENCY_KEY',
+          error: 'The registration request is invalid.',
+        },
+        origin
+      )
+    }
+    const idempotencyKey = incomingIdempotencyKey || randomUUIDImpl()
+
+    const serialized = serializedBody(request)
+    if (serialized.error) {
+      const tooLarge = serialized.error === 'PAYLOAD_TOO_LARGE'
+      return sendJson(
+        response,
+        tooLarge ? 413 : 400,
+        {
+          ok: false,
+          code: serialized.error,
+          error: tooLarge
+            ? 'The request is too large.'
+            : 'The request body is invalid.',
+        },
+        origin
+      )
+    }
+
+    let upstream
+    try {
+      upstream = await fetchImpl(endpoint, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          Origin: origin,
+        },
+        body: serialized.body,
+      })
+    } catch {
+      return sendJson(
+        response,
+        503,
+        {
+          ok: false,
+          code: 'INTAKE_UNAVAILABLE',
+          error: 'Evaluation registration is temporarily unavailable.',
+        },
+        origin
+      )
+    }
+
+    const body = await publicResponseBody(upstream)
+    if (!body || upstream.status < 200 || upstream.status > 599) {
+      return sendJson(
+        response,
+        503,
+        {
+          ok: false,
+          code: 'INTAKE_UNAVAILABLE',
+          error: 'Evaluation registration is temporarily unavailable.',
+        },
+        origin
+      )
+    }
+
+    if (
+      upstream.status >= 200 &&
+      upstream.status < 300 &&
+      body.paymentUrl &&
+      (
+        body.paymentChoice !== 'online' ||
+        !resolveApprovedEvaluationPaymentUrl(
+          body.paymentUrl,
+          String(body.registrationId || '')
+        )
+      )
+    ) {
+      return sendJson(
+        response,
+        503,
+        {
+          ok: false,
+          code: 'INTAKE_UNAVAILABLE',
+          error: 'Evaluation registration is temporarily unavailable.',
+        },
+        origin
+      )
+    }
+
+    copyPublicResponseHeader(upstream, response, 'Retry-After')
+    copyPublicResponseHeader(upstream, response, 'X-RateLimit-Remaining')
+    return sendJson(response, upstream.status, body, origin)
   }
 }
+
+export const evaluationRegistrationForwarderInternals = Object.freeze({
+  compatibilitySunset: COMPATIBILITY_SUNSET.toISOString(),
+})
+
+export default createEvaluationRegistrationForwarder()

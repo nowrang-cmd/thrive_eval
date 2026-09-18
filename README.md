@@ -1,6 +1,6 @@
 # THRiVE Development Evaluation Registration
 
-**Status:** Production-validated secure intake application  
+**Status:** Secure client cutover implemented; preview and production rollout pending
 **Current fee:** **$30 CAD**  
 **Current Vercel URL:** `https://thrive-eval.vercel.app`  
 **Production domain target:** `https://start.thrivebasketball.org`
@@ -9,11 +9,26 @@ This repository hosts the new THRiVE Basketball Academy Development Evaluation R
 
 ## Current architecture
 
-New Development Evaluation registrations follow this flow:
+After the cutover, Development Evaluation registrations follow this flow:
 
-`Public GET EVALUATED CTA → start.thrivebasketball.org → thrive_eval → evaluation_submissions → THRiVE OS Athlete Intake`
+`Public GET EVALUATED CTA → start.thrivebasketball.org → thrive_eval browser → THRiVE OS /api/public-evaluation-intake → service-only intake RPC → evaluation_submissions + notification outbox → THRiVE OS Athlete Intake`
 
-The registration itself is the intake. New registrations write directly to `evaluation_submissions`; they do not require a new `evaluation_requests → evaluation_submissions` conversion step.
+The registration itself remains the intake. Current browser builds send an allowlisted request directly to the THRiVE OS public boundary, which derives operational and payment state server-side. A compatibility-only `/api/evaluation-registration` forwarder remains for cached older bundles through December 31, 2026; it has no Supabase access and retires closed after that date.
+
+## Client environment
+
+Set the public, build-time endpoint for each environment:
+
+```text
+VITE_THRIVE_OS_PUBLIC_EVALUATION_INTAKE_URL=https://<thrive-os-host>/api/public-evaluation-intake
+THRIVE_OS_PUBLIC_EVALUATION_INTAKE_URL=https://<thrive-os-host>/api/public-evaluation-intake
+```
+
+Both variables use the same endpoint: the `VITE_` value is for current browser builds, and the server-only value is for the temporary compatibility forwarder. The URL must use HTTPS and the exact `/api/public-evaluation-intake` path. Preview builds must point only to a THRiVE OS preview connected to non-production Supabase data. No Supabase key, service-role key, payment secret, or intake hash secret belongs in a `VITE_` variable.
+
+The browser generates a 128-bit idempotency key with Web Crypto. A per-tab `sessionStorage` record contains only that random key and a SHA-256 payload fingerprint; it never stores the registration payload. An unchanged retry reuses the key, while an edited or reset registration receives a new one.
+
+The compatibility forwarder accepts only same-origin HTTPS calls, forwards no cookies or authorization headers, and sends only the JSON body, original origin, and idempotency key to THRiVE OS. Cached bundles that predate browser idempotency keys receive a fresh compatibility key per request. Its response includes `Deprecation` and `Sunset` headers.
 
 ## Development Evaluation fee
 
@@ -68,17 +83,9 @@ Families do not select:
 
 The THRiVE Development Evaluation determines the appropriate starting stage.
 
-## Supabase
+## Supabase boundary
 
-THRiVE project ref:
-
-`nbofhqsjkbacwtwpwjai`
-
-New registrations write to:
-
-`public.evaluation_submissions`
-
-The public registration API uses the controlled anonymous/public INSERT policy for the secure THRiVE intake origin. Private reads and management remain protected.
+This application has no direct Supabase registration access. The THRiVE OS server boundary is the only component allowed to invoke the service-only intake RPC. It validates the origin, body allowlist, consent, idempotency key, rate limit, and payment choice before the database derives protected fields and writes `public.evaluation_submissions`.
 
 ## Stripe fulfillment
 
@@ -102,7 +109,9 @@ Evaluation payment fulfillment verifies:
 - source `thrive_evaluation_registration`;
 - `$30` amount due.
 
-## End-to-end verification — 2026-08-19
+## Historical end-to-end verification — 2026-08-19
+
+The checks below verified the predecessor intake path. Before production cutover, repeat both payment paths through the new THRiVE OS boundary on a Vercel preview backed only by the staging Supabase project.
 
 ### Pay at Evaluation — PASS
 
@@ -160,6 +169,11 @@ The broader public-site source-of-truth documents live in `nowrang-cmd/thrive-pu
 
 When older Word blueprints or mockups conflict with these current documents, follow the current operational/handoff documents.
 
-## Next production step
+## Cutover gate
 
-Attach/confirm `start.thrivebasketball.org` on the `thrive-eval` Vercel project and route all new public GET EVALUATED actions to that secure domain.
+1. Configure the feature-branch preview with the THRiVE OS staging preview endpoint.
+2. Ensure that preview origin is explicitly allowed by the THRiVE OS intake boundary.
+3. Verify Pay Now, Pay at Evaluation, exact retry, changed-payload retry, rate limiting, and the saved-registration/payment-link-unavailable path with synthetic staging data.
+4. Confirm one submission and one intended outbox item per registration.
+5. Record both commits, preview URLs, verification results, and rollback plan.
+6. Obtain explicit approval before changing the production domain, production variables, or Supabase revocation migration.
