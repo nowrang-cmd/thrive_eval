@@ -9,7 +9,7 @@ const LOGO = 'https://os.thrivebasketball.org/logos/white_logo.jpg'
 const SITE = 'https://thrive-public-website.vercel.app'
 
 const grades = ['Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12','Prep','College / University','Other']
-const facilities = ['Sport for Life Centre','Garden City Collegiate','University of Winnipeg','Canadian Mennonite University','University of Manitoba','Dasmesh School']
+const facilities = ['Dasmesh School','Sport for Life Centre','Garden City Collegiate','University of Winnipeg','Canadian Mennonite University','University of Manitoba']
 const levels = ['New to organized basketball','Recreational','School team','Club / community team','Provincial / elite','Prep / post-secondary','Other']
 const todayIso = new Date().toISOString().slice(0, 10)
 
@@ -161,7 +161,7 @@ export default function App() {
             </FormSection>
 
             <FormSection icon="clipboard" title="EVALUATION PREFERENCES">
-              <Field label="Preferred Evaluation Location" required><select name="preferredLocation" value={form.preferredLocation} onChange={change} required><option value="">Select a location</option><option>No preference</option>{facilities.map((f) => <option key={f}>{f}</option>)}</select></Field>
+              <Field label="Preferred Evaluation Location" required><select name="preferredLocation" value={form.preferredLocation} onChange={change} required><option value="">Select a location</option>{facilities.map((f) => <option key={f}>{f}</option>)}<option>No preference</option></select></Field>
               <p className="location-list">{facilities.join('  •  ')}</p>
               <Field label="Availability Notes (Optional)"><textarea name="availabilityNotes" value={form.availabilityNotes} onChange={change} rows="3" maxLength="500" placeholder="Share days or times that may work. THRiVE will contact you with available evaluation sessions." /><Counter value={form.availabilityNotes} /></Field>
             </FormSection>
