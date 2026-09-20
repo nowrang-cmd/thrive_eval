@@ -9,7 +9,7 @@ const LOGO = 'https://os.thrivebasketball.org/logos/white_logo.jpg'
 const SITE = 'https://thrive-public-website.vercel.app'
 
 const grades = ['Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12','Prep','College / University','Other']
-const facilities = ['Sport for Life Centre','Garden City Collegiate','University of Winnipeg','Canadian Mennonite University','University of Manitoba']
+const facilities = ['Sport for Life Centre','Garden City Collegiate','University of Winnipeg','Canadian Mennonite University','University of Manitoba','Dasmesh School']
 const levels = ['New to organized basketball','Recreational','School team','Club / community team','Provincial / elite','Prep / post-secondary','Other']
 const todayIso = new Date().toISOString().slice(0, 10)
 
